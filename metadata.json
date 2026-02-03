@@ -1,0 +1,5 @@
+{
+  "name": "ConstructBill MVP",
+  "description": "A progress-based PMI-style invoicing system for construction projects, featuring role-based access, schedule of values management, and PDF generation.",
+  "requestFramePermissions": []
+}
