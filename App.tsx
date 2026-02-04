@@ -1,15 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { User, UserRole } from './types';
-import { mockApi } from './services/mockApi';
+import { api } from './services/api';
 import Dashboard from './pages/Dashboard';
 import Projects from './pages/Projects';
 import Clients from './pages/Clients';
 import Login from './pages/Login';
 import BillingPackages from './pages/BillingPackages';
 import BillingWizard from './pages/BillingWizard';
-import DefaultTemplates from './pages/DefaultTemplates';
 import CompanyManagement from './pages/CompanyManagement';
 
 const Layout: React.FC<{ user: User; onLogout: () => void; children: React.ReactNode }> = ({ user, onLogout, children }) => {
@@ -72,15 +71,19 @@ const Layout: React.FC<{ user: User; onLogout: () => void; children: React.React
 };
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<User | null>(mockApi.getCurrentUser());
+  const [user, setUser] = useState<User | null>(api.getCurrentUser());
 
-  const handleLogin = (email: string) => {
-    const loggedInUser = mockApi.login(email);
-    if (loggedInUser) setUser(loggedInUser);
+  const handleLogin = async (email: string) => {
+    try {
+      const data = await api.login(email);
+      setUser(data.user);
+    } catch (error: any) {
+      alert(error.message);
+    }
   };
 
   const handleLogout = () => {
-    mockApi.logout();
+    api.logout();
     setUser(null);
   };
 
