@@ -19,7 +19,9 @@ export const generateInvoicePDF = async (pkg: BillingPackage, project: Project, 
 };
 
 export const generateStatusReportPDF = async (pkg: BillingPackage, project: Project, client: Client) => {
-  console.log('Generating Status Report PDF with Images:', pkg.statusReport.images.length);
+  // Fix: Property 'images' does not exist on type 'StatusReport'. Count across sections.
+  const imageCount = pkg.statusReport.sections.reduce((acc, s) => acc + s.images.length, 0);
+  console.log('Generating Status Report PDF with Images:', imageCount);
   return new Promise((resolve) => {
     setTimeout(() => {
       const mockBlob = new Blob([`Status Report for ${project.name} - Period ${pkg.billingPeriodEnd}`], { type: 'application/pdf' });

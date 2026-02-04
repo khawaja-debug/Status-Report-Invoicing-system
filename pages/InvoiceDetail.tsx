@@ -24,22 +24,28 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
   const [projects] = useState<Project[]>(mockApi.getProjects());
   const [clients] = useState<Client[]>(mockApi.getClients());
   
-  // Fix: Use BillingPackage type and align with standard schema
+  // Fix: Use BillingPackage type and align with standard schema, adding missing required fields
   const [pkg, setPkg] = useState<BillingPackage>({
     id: id || Math.random().toString(36).substr(2, 9),
     projectId: projects[0]?.id || '',
+    companyId: projects[0]?.companyId || '',
     billingPeriodStart: '',
     billingPeriodEnd: '',
+    phaseNumber: 1,
     status: PackageStatus.DRAFT,
     invoice: {
       id: Math.random().toString(36).substr(2, 9),
       invoiceNumber: `INV-${Date.now().toString().slice(-6)}`,
       invoiceDate: new Date().toISOString().split('T')[0],
+      placeOfSupply: '',
       items: [],
-      totals: { subtotal: 0, retainage: 0, tax: 0, grandTotal: 0 }
+      totals: { total: 0, retentionPercent: 0, retentionAmount: 0, grandTotal: 0, subtotal: 0, retainage: 0, tax: 0 },
+      amountInWords: ''
     },
     statusReport: {
       id: Math.random().toString(36).substr(2, 9),
+      phaseNumber: 1,
+      sections: [],
       summaryText: '',
       progressText: '',
       risksText: '',
@@ -80,12 +86,20 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
     const proj = projects.find(p => p.id === projectId);
     setActiveProject(proj);
     setActiveClient(clients.find(c => c.id === proj?.clientId));
-    setPkg(prev => ({ ...prev, projectId }));
+    setPkg(prev => ({ ...prev, projectId, companyId: proj?.companyId || '' }));
   };
 
   const addLineItem = () => {
+    // Fix: Added missing required properties for InvoiceLineItem to match types.ts
     const newItem: InvoiceLineItem = {
       id: Math.random().toString(36).substr(2, 9),
+      sNo: pkg.invoice.items.length + 1,
+      particulars: '',
+      hsnCode: '',
+      unit: 'Job',
+      qty: 1,
+      rate: 0,
+      amount: 0,
       description: '',
       originalValue: 0,
       workCompletedPrevPercent: 0,
@@ -120,6 +134,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
     const files = e.target.files;
     if (!files) return;
 
+    // Fix: Explicitly typing file as File to avoid 'unknown' to 'Blob' assignment error
     Array.from(files).forEach((file: File) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -128,7 +143,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
           ...prev,
           statusReport: {
             ...prev.statusReport,
-            images: [...prev.statusReport.images, {
+            images: [...(prev.statusReport.images || []), {
               id: Math.random().toString(36).substr(2, 9),
               dataUrl: base64String,
               caption: ''
@@ -145,7 +160,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
       ...prev,
       statusReport: {
         ...prev.statusReport,
-        images: prev.statusReport.images.filter(img => img.id !== imageId)
+        images: (prev.statusReport.images || []).filter(img => img.id !== imageId)
       }
     }));
   };
@@ -156,11 +171,11 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
     let totalRetainage = 0;
 
     pkg.invoice.items.forEach(item => {
-      const workAmount = (item.originalValue * item.thisPeriodPercent) / 100;
-      const amountSubjectToRetainage = workAmount + item.storedMaterialsAmount;
+      const workAmount = ((item.originalValue || 0) * (item.thisPeriodPercent || 0)) / 100;
+      const amountSubjectToRetainage = workAmount + (item.storedMaterialsAmount || 0);
       
       subtotal += amountSubjectToRetainage;
-      totalRetainage += (amountSubjectToRetainage * item.retainagePercent) / 100;
+      totalRetainage += (amountSubjectToRetainage * (item.retainagePercent || 10)) / 100;
     });
 
     const tax = (subtotal - totalRetainage) * TAX_RATE;
@@ -170,7 +185,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
       ...prev,
       invoice: {
         ...prev.invoice,
-        totals: { subtotal, retainage: totalRetainage, tax, grandTotal }
+        totals: { 
+          total: subtotal, 
+          retentionPercent: (totalRetainage / (subtotal || 1)) * 100, 
+          retentionAmount: totalRetainage, 
+          grandTotal,
+          subtotal, 
+          retainage: totalRetainage, 
+          tax 
+        }
       }
     }));
   }, [pkg.invoice.items]);
@@ -352,7 +375,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
                               <input 
                                 disabled={isLockedForEditing}
                                 className="w-full px-2 py-1 rounded border border-slate-200"
-                                value={item.description}
+                                value={item.description || ''}
                                 onChange={e => updateLineItem(item.id, { description: e.target.value })}
                               />
                             </td>
@@ -361,21 +384,21 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
                                 type="number"
                                 disabled={isLockedForEditing}
                                 className="w-24 px-2 py-1 rounded border border-slate-200"
-                                value={item.originalValue}
+                                value={item.originalValue || 0}
                                 onChange={e => updateLineItem(item.id, { originalValue: Number(e.target.value) })}
                               />
                             </td>
-                            <td className="p-2 text-slate-500">{item.workCompletedPrevPercent}%</td>
+                            <td className="p-2 text-slate-500">{item.workCompletedPrevPercent || 0}%</td>
                             <td className="p-2">
                               <input 
                                 type="number"
                                 disabled={isLockedForEditing}
                                 className="w-16 px-2 py-1 rounded border border-slate-200"
-                                value={item.thisPeriodPercent}
+                                value={item.thisPeriodPercent || 0}
                                 onChange={e => updateLineItem(item.id, { thisPeriodPercent: Number(e.target.value) })}
                               />
                             </td>
-                            <td className="p-2 font-bold">${((item.originalValue * item.thisPeriodPercent) / 100).toLocaleString()}</td>
+                            <td className="p-2 font-bold">${(((item.originalValue || 0) * (item.thisPeriodPercent || 0)) / 100).toLocaleString()}</td>
                             <td className="p-2">
                               {!isLockedForEditing && (
                                 <button onClick={() => removeLineItem(item.id)} className="text-red-400 hover:text-red-600">✕</button>
@@ -414,7 +437,7 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
                 Attach photos of the completed work for this period. These will be automatically formatted into the Status Report appendix.
               </p>
 
-              {pkg.statusReport.images?.length === 0 ? (
+              {(!pkg.statusReport.images || pkg.statusReport.images.length === 0) ? (
                 <div 
                   className="border-2 border-dashed border-slate-200 rounded-2xl p-12 text-center cursor-pointer hover:bg-slate-50 transition-colors"
                   onClick={() => !isLockedForEditing && fileInputRef.current?.click()}
@@ -463,15 +486,15 @@ const InvoiceDetail: React.FC<InvoiceDetailProps> = ({ mode, user }) => {
             <div className="space-y-4">
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Subtotal</span>
-                <span className="font-semibold text-slate-800">${pkg.invoice.totals.subtotal.toLocaleString()}</span>
+                <span className="font-semibold text-slate-800">${(pkg.invoice.totals.subtotal || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Retainage</span>
-                <span className="font-semibold text-red-600">-${pkg.invoice.totals.retainage.toLocaleString()}</span>
+                <span className="font-semibold text-red-600">-${(pkg.invoice.totals.retainage || 0).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-slate-500">Tax</span>
-                <span className="font-semibold text-slate-800">${pkg.invoice.totals.tax.toLocaleString()}</span>
+                <span className="font-semibold text-slate-800">${(pkg.invoice.totals.tax || 0).toLocaleString()}</span>
               </div>
               <div className="pt-4 border-t flex justify-between">
                 <span className="font-bold text-slate-900">Total Package Value</span>

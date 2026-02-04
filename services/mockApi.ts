@@ -1,12 +1,13 @@
 
-import { Client, Project, BillingPackage, User, PackageStatus } from '../types';
-import { MOCK_CLIENTS, MOCK_PROJECTS, MOCK_USERS } from '../constants';
+import { Client, Project, BillingPackage, User, Company, PackageStatus } from '../types';
+import { MOCK_CLIENTS, MOCK_PROJECTS, MOCK_USERS, MOCK_COMPANIES } from '../constants';
 
 const STORAGE_KEYS = {
   CLIENTS: 'cb_clients',
   PROJECTS: 'cb_projects',
   PACKAGES: 'cb_packages',
-  USER: 'cb_current_user'
+  USER: 'cb_current_user',
+  COMPANIES: 'cb_companies'
 };
 
 const getStorage = <T,>(key: string, initial: T): T => {
@@ -28,11 +29,33 @@ export const mockApi = {
   },
   logout: () => localStorage.removeItem(STORAGE_KEYS.USER),
 
+  // Companies
+  getCompanies: (): Company[] => getStorage(STORAGE_KEYS.COMPANIES, MOCK_COMPANIES),
+  getCompanyById: (id: string) => mockApi.getCompanies().find(c => c.id === id),
+  saveCompany: (company: Company) => {
+    const companies = mockApi.getCompanies();
+    const idx = companies.findIndex(c => c.id === company.id);
+    if (idx > -1) {
+      companies[idx] = company;
+    } else {
+      companies.push(company);
+    }
+    setStorage(STORAGE_KEYS.COMPANIES, companies);
+    return company;
+  },
+  setDefaultCompany: (id: string) => {
+    const companies = mockApi.getCompanies().map(c => ({
+      ...c,
+      isDefault: c.id === id
+    }));
+    setStorage(STORAGE_KEYS.COMPANIES, companies);
+  },
+
   // Clients
   getClients: (): Client[] => getStorage(STORAGE_KEYS.CLIENTS, MOCK_CLIENTS),
   addClient: (client: Omit<Client, 'id'>) => {
     const clients = mockApi.getClients();
-    const newClient = { ...client, id: Math.random().toString(36).substr(2, 9) };
+    const newClient = { ...client, id: Math.random().toString(36).substr(2, 9) } as Client;
     setStorage(STORAGE_KEYS.CLIENTS, [...clients, newClient]);
     return newClient;
   },
@@ -41,7 +64,7 @@ export const mockApi = {
   getProjects: (): Project[] => getStorage(STORAGE_KEYS.PROJECTS, MOCK_PROJECTS),
   addProject: (project: Omit<Project, 'id'>) => {
     const projects = mockApi.getProjects();
-    const newProject = { ...project, id: Math.random().toString(36).substr(2, 9) };
+    const newProject = { ...project, id: Math.random().toString(36).substr(2, 9) } as Project;
     setStorage(STORAGE_KEYS.PROJECTS, [...projects, newProject]);
     return newProject;
   },

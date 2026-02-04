@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import BillingPackages from './pages/BillingPackages';
 import BillingWizard from './pages/BillingWizard';
 import DefaultTemplates from './pages/DefaultTemplates';
+import CompanyManagement from './pages/CompanyManagement';
 
 const Layout: React.FC<{ user: User; onLogout: () => void; children: React.ReactNode }> = ({ user, onLogout, children }) => {
   const location = useLocation();
@@ -18,7 +19,7 @@ const Layout: React.FC<{ user: User; onLogout: () => void; children: React.React
     { name: 'Projects', path: '/projects', roles: [UserRole.ADMIN, UserRole.PROJECT_MANAGER] },
     { name: 'Clients', path: '/clients', roles: [UserRole.ADMIN] },
     { name: 'Billing Packages', path: '/packages', roles: [UserRole.ADMIN, UserRole.PROJECT_MANAGER, UserRole.FINANCE] },
-    { name: 'Default Templates', path: '/templates', roles: [UserRole.ADMIN] },
+    { name: 'Company Profiles', path: '/companies', roles: [UserRole.ADMIN] },
   ];
 
   return (
@@ -99,7 +100,7 @@ const App: React.FC = () => {
                   <Route path="/packages" element={<BillingPackages user={user} />} />
                   <Route path="/packages/new" element={<BillingWizard user={user} />} />
                   <Route path="/packages/:id" element={<BillingWizard user={user} />} />
-                  <Route path="/templates" element={<DefaultTemplates />} />
+                  <Route path="/companies" element={<CompanyManagement />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </Layout>
